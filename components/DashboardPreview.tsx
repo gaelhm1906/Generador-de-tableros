@@ -1,7 +1,8 @@
+
 import React, { useMemo } from 'react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  AreaChart, Area, Cell, PieChart, Pie, Legend
+  AreaChart, Area, Cell, PieChart, Pie, Legend, RadarChart, Radar, PolarGrid, PolarAngleAxis
 } from 'recharts';
 import { DataRow, DashboardConfig, ColumnMapping } from '../types';
 import { SOBSE_THEME } from '../constants';
@@ -13,173 +14,170 @@ interface Props {
 }
 
 const DashboardPreview: React.FC<Props> = ({ data, config, mapping }) => {
-  // Procesar datos basados en el mapeo activo
-  const chartData = useMemo(() => {
+  
+  // Helper para acortar textos muy largos en los ejes
+  const truncate = (str: string, n: number) => {
+    return (str.length > n) ? str.slice(0, n - 1) + '...' : str;
+  };
+
+  const getMappedColumn = (configKey: string, type: 'dim' | 'met') => {
+    if (configKey === 'category' || configKey === mapping.category) return mapping.category;
+    if (configKey === 'metric1' || configKey === mapping.metric1) return mapping.metric1;
+    if (configKey === 'metric2' || configKey === mapping.metric2) return mapping.metric2;
+    if (data.length > 0 && data[0].hasOwnProperty(configKey)) return configKey;
+    return type === 'dim' ? mapping.category : mapping.metric1;
+  };
+
+  const processChartData = (dimension: string, metric: string) => {
+    const dim = getMappedColumn(dimension, 'dim');
+    const met = getMappedColumn(metric, 'met');
+    
     const map = new Map();
     data.forEach(row => {
-      const cat = String(row[mapping.category] || 'N/A');
-      const val1 = Number(row[mapping.metric1]) || 0;
-      const val2 = Number(row[mapping.metric2]) || 0;
-      
-      if (!map.has(cat)) {
-        map.set(cat, { name: cat, m1: 0, m2: 0, count: 0 });
+      const cat = String(row[dim] || 'Sin Dato');
+      let val = 0;
+      const rawVal = row[met];
+
+      if (typeof rawVal === 'number') val = rawVal;
+      else if (typeof rawVal === 'string') {
+        const cleaned = rawVal.replace(/[^0-9.-]+/g, "");
+        val = parseFloat(cleaned) || 0;
       }
-      const entry = map.get(cat);
-      entry.m1 += val1;
-      entry.m2 += val2;
-      entry.count += 1;
+
+      if (!map.has(cat)) map.set(cat, { name: cat, value: 0 });
+      map.get(cat).value += val;
     });
 
-    // Devolver top 10 por métrica 1
     return Array.from(map.values())
-      .sort((a, b) => b.m1 - a.m1)
+      .sort((a, b) => b.value - a.value)
       .slice(0, 10);
-  }, [data, mapping]);
+  };
 
   const kpis = useMemo(() => {
     return config.kpis.map(kpi => {
-      // Intentar encontrar el total si la métrica existe
-      const targetKey = mapping[kpi.key as keyof ColumnMapping] || kpi.key;
-      const total = data.reduce((acc, row) => acc + (Number(row[targetKey]) || 0), 0);
-      const avg = total / data.length;
+      const target = getMappedColumn(kpi.key, 'met');
+      const values = data.map(r => {
+        const v = r[target];
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') return parseFloat(v.replace(/[^0-9.-]+/g, "")) || 0;
+        return 0;
+      });
+      const total = values.reduce((acc, v) => acc + v, 0);
+      const avg = total / (data.length || 1);
       const finalValue = kpi.format === 'percent' ? avg : total;
-      
-      let display = finalValue.toLocaleString();
-      if (kpi.format === 'currency') display = `$${finalValue.toLocaleString()}`;
-      if (kpi.format === 'percent') display = `${finalValue.toFixed(1)}%`;
-      
-      return { ...kpi, display };
+
+      const display = kpi.format === 'currency' 
+        ? `$${finalValue.toLocaleString('es-MX', { maximumFractionDigits: 0 })}` 
+        : kpi.format === 'percent' 
+          ? `${finalValue.toFixed(1)}%` 
+          : finalValue.toLocaleString();
+
+      return { ...kpi, display, value: finalValue };
     });
-  }, [data, config, mapping]);
+  }, [data, mapping, config]);
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-1000">
-      {/* Header del Tablero */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-slate-200 pb-8 gap-6">
-        <div>
-          <h2 className="text-4xl font-black text-slate-900 tracking-tight leading-none mb-3">{config.title}</h2>
-          <p className="text-slate-500 font-bold uppercase tracking-[0.2em] text-xs">{config.subtitle}</p>
-        </div>
-        <div className="flex gap-4">
-          <div className="px-4 py-2 bg-white border border-slate-200 rounded-xl shadow-sm text-center">
-            <p className="text-[10px] font-black text-slate-400 uppercase">Muestreo</p>
-            <p className="text-sm font-bold text-slate-900">{data.length} Filas</p>
-          </div>
-          <div className="px-4 py-2 bg-guinda text-white rounded-xl shadow-sm text-center">
-            <p className="text-[10px] font-black opacity-60 uppercase">Estado</p>
-            <p className="text-sm font-bold uppercase tracking-widest text-[10px]">Actualizado</p>
-          </div>
+    <div className="space-y-16">
+      {/* Hero Banner */}
+      <div className="bg-gradient-to-br from-[#1A1C23] to-guinda rounded-[4rem] p-16 md:p-24 text-white shadow-3xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-white/5 rounded-full -mr-48 -mt-48 blur-[120px]" />
+        <div className="relative z-10 max-w-5xl">
+          <h1 className="text-7xl md:text-8xl font-black tracking-tighter mb-10 leading-[0.85]">{config.title}</h1>
+          <p className="text-slate-300 font-medium text-2xl md:text-3xl opacity-90 leading-relaxed max-w-4xl">{config.subtitle}</p>
         </div>
       </div>
 
-      {/* Grid de KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
         {kpis.map((kpi, i) => (
-          <div key={i} className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group hover:shadow-lg transition-all">
-            <div 
-              className="absolute left-0 top-0 bottom-0 w-1.5" 
-              style={{ backgroundColor: i % 3 === 0 ? SOBSE_THEME.GUINDA : i % 3 === 1 ? SOBSE_THEME.VERDE : SOBSE_THEME.DORADO }} 
-            />
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{kpi.label}</p>
-            <p className="text-3xl font-black text-slate-900 tracking-tight">{kpi.display}</p>
-            <div className="mt-4 flex items-center gap-2">
-               <div className="h-1 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                 <div className="h-full bg-slate-300 w-2/3" />
-               </div>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">Salud Óptima</span>
-            </div>
+          <div key={i} className="bg-white p-10 rounded-[3.5rem] border border-slate-100 shadow-sm relative overflow-hidden group">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">{kpi.label}</p>
+            <span className="text-4xl font-black text-slate-900 group-hover:text-guinda transition-colors">{kpi.display}</span>
           </div>
         ))}
       </div>
 
-      {/* Gráficas Principales */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Gráfica 1: Barras Comparativas */}
-        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-guinda" />
-              Comparativa por {mapping.category}
-            </h3>
+      {/* Dynamic Sections */}
+      {config.sections.map((section, sIdx) => (
+        <section key={sIdx} className="space-y-10">
+          <div className="flex items-center gap-8 px-4">
+            <div className="h-12 w-2 bg-guinda rounded-full" />
+            <div>
+              <h3 className="text-4xl font-black text-slate-900 uppercase tracking-tighter">{section.title}</h3>
+              <p className="text-lg font-bold text-slate-400">{section.description}</p>
+            </div>
           </div>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} tickFormatter={(v) => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v.toLocaleString()} />
-                <Tooltip 
-                  cursor={{ fill: '#f8fafc' }}
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
-                />
-                <Bar name={mapping.metric1} dataKey="m1" fill={SOBSE_THEME.GUINDA} radius={[6, 6, 0, 0]} barSize={35} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        {/* Gráfica 2: Tendencia o Área */}
-        <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-dorado" />
-              Distribución de {mapping.metric2}
-            </h3>
-          </div>
-          <div className="h-[350px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="colorM2" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={SOBSE_THEME.DORADO} stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor={SOBSE_THEME.DORADO} stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }} />
-                <Area type="monotone" name={mapping.metric2} dataKey="m2" stroke={SOBSE_THEME.DORADO} strokeWidth={3} fillOpacity={1} fill="url(#colorM2)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            {section.charts.map((chart, cIdx) => {
+              const chartData = processChartData(chart.dimension, chart.metric);
+              const isEmpty = chartData.length === 0 || chartData.every(d => d.value === 0);
+              
+              return (
+                <div key={cIdx} className="bg-white p-12 rounded-[4rem] border border-slate-100 shadow-sm space-y-8 min-h-[550px] flex flex-col">
+                  <div>
+                    <h4 className="text-2xl font-black text-slate-900 tracking-tighter uppercase italic">{chart.title}</h4>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{chart.description || 'Vista analítica'}</p>
+                  </div>
 
-      {/* Tabla de Resumen Final */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-6 bg-slate-50 border-b flex justify-between items-center">
-          <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Resumen de Ejecución Top 10</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-slate-50 border-b">
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{mapping.category}</th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{mapping.metric1}</th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">{mapping.metric2}</th>
-                <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Desempeño</th>
-              </tr>
-            </thead>
-            <tbody>
-              {chartData.map((row, i) => (
-                <tr key={i} className="border-b last:border-0 hover:bg-slate-50/50 transition-colors">
-                  <td className="px-8 py-5 text-sm font-bold text-slate-800">{row.name}</td>
-                  <td className="px-8 py-5 text-sm font-medium text-slate-600">{row.m1.toLocaleString()}</td>
-                  <td className="px-8 py-5 text-sm font-medium text-slate-600">{row.m2.toLocaleString()}</td>
-                  <td className="px-8 py-5 text-center">
-                    <span className={`inline-block w-2.5 h-2.5 rounded-full animate-pulse ${i < 3 ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <footer className="pt-12 pb-8 text-center">
-        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">SOBSE · Inteligencia Visual CDMX © 2024</p>
-      </footer>
+                  <div className="flex-1 w-full overflow-hidden">
+                    {!isEmpty ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        {chart.type === 'bar' ? (
+                          <BarChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 80 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis 
+                              dataKey="name" 
+                              fontSize={10} 
+                              fontWeight="800"
+                              tick={{ fill: '#64748b' }}
+                              interval={0}
+                              angle={-45}
+                              textAnchor="end"
+                              height={100}
+                              tickFormatter={(val) => truncate(val, 15)}
+                            />
+                            <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{ fill: '#94a3b8' }} />
+                            <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)' }} />
+                            <Bar dataKey="value" fill={chart.color || SOBSE_THEME.GUINDA} radius={[10, 10, 0, 0]} barSize={40} />
+                          </BarChart>
+                        ) : chart.type === 'pie' ? (
+                          /* Fix: Added top, right, and left to margin to satisfy Margin type requirements */
+                          <PieChart margin={{ top: 0, right: 0, left: 0, bottom: 40 }}>
+                            <Pie 
+                              data={chartData} 
+                              innerRadius={80} 
+                              outerRadius={130} 
+                              paddingAngle={5} 
+                              dataKey="value" 
+                            >
+                              {chartData.map((_, index) => (
+                                <Cell key={index} fill={[SOBSE_THEME.GUINDA, SOBSE_THEME.VERDE, SOBSE_THEME.DORADO, '#2D2F39'][index % 4]} />
+                              ))}
+                            </Pie>
+                            <Tooltip />
+                            <Legend verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: '10px', paddingTop: '20px' }} formatter={(val) => truncate(val, 20)} />
+                          </PieChart>
+                        ) : (
+                          <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" fontSize={10} angle={-45} textAnchor="end" height={80} tickFormatter={(val) => truncate(val, 12)} />
+                            <YAxis hide />
+                            <Tooltip />
+                            <Area type="monotone" dataKey="value" stroke={chart.color} fill={chart.color} fillOpacity={0.2} />
+                          </AreaChart>
+                        )}
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-full flex items-center justify-center text-slate-300 font-bold uppercase text-xs tracking-widest">Sin datos</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
 };

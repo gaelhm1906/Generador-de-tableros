@@ -4,23 +4,33 @@ export interface DataRow {
 }
 
 export interface ColumnMapping {
-  category: string;
-  metric1: string;
-  metric2: string;
+  category: string; // Eje X / Agrupador principal
+  metric1: string;  // Métrica principal (Ej: Monto)
+  metric2: string;  // Métrica secundaria (Ej: Avance)
   date?: string;
-  location?: string;
+}
+
+export interface ChartConfig {
+  id: string;
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar';
+  title: string;
+  description?: string;
+  dimension: string;
+  metric: string;
+  color: string;
+}
+
+export interface DashboardSection {
+  title: string;
+  description: string;
+  charts: ChartConfig[];
 }
 
 export interface DashboardConfig {
   title: string;
   subtitle: string;
+  sections: DashboardSection[];
   kpis: { label: string; key: string; format: 'currency' | 'percent' | 'number' }[];
-  charts: {
-    type: 'bar' | 'area' | 'donut';
-    title: string;
-    dimension: string;
-    metric: string;
-  }[];
   colors: {
     primary: string;
     secondary: string;
@@ -31,5 +41,5 @@ export interface DashboardConfig {
 export interface AnalysisResult {
   suggestedMapping: ColumnMapping;
   suggestedConfig: DashboardConfig;
-  dataOverview: string;
+  aiInsights: string[];
 }
