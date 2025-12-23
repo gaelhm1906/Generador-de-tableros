@@ -1,0 +1,5 @@
+{
+  "name": "Generador Inteligente de Tableros SOBSE",
+  "description": "Una aplicación avanzada impulsada por IA (Gemini) que analiza bases de datos (Excel/JSON) para generar automáticamente tableros de control visualmente impactantes, adaptables a cualquier temática de infraestructura o gestión pública.",
+  "requestFramePermissions": []
+}
