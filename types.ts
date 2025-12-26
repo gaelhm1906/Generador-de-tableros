@@ -3,10 +3,28 @@ export interface DataRow {
   [key: string]: any;
 }
 
+export type DashboardFamily = 'OBRA_PUBLICA' | 'FINANCIERO' | 'PROGRAMA_SOCIAL' | 'GENERICO';
+
+export interface ColumnMetadata {
+  name: string;
+  type: 'number' | 'text' | 'date';
+  uniqueRatio: number; // Cardinalidad
+  isMetric: boolean;
+  isDimension: boolean;
+  scoreTags: string[]; // Etiquetas como 'avance', 'dinero', 'geografia'
+}
+
+export interface TableStore {
+  [tableName: string]: {
+    rows: DataRow[];
+    columns: { [colName: string]: ColumnMetadata };
+  };
+}
+
 export interface ColumnMapping {
-  category: string; // Eje X / Agrupador principal
-  metric1: string;  // Métrica principal (Ej: Monto)
-  metric2: string;  // Métrica secundaria (Ej: Avance)
+  category: string; 
+  metric1: string;  
+  metric2: string;  
   date?: string;
 }
 
@@ -27,6 +45,7 @@ export interface DashboardSection {
 }
 
 export interface DashboardConfig {
+  family: DashboardFamily;
   title: string;
   subtitle: string;
   sections: DashboardSection[];
@@ -42,4 +61,5 @@ export interface AnalysisResult {
   suggestedMapping: ColumnMapping;
   suggestedConfig: DashboardConfig;
   aiInsights: string[];
+  confidenceScore: number;
 }
