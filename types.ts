@@ -7,11 +7,12 @@ export type DashboardFamily = 'OBRA_PUBLICA' | 'FINANCIERO' | 'PROGRAMA_SOCIAL' 
 
 export interface ColumnMetadata {
   name: string;
+  alias?: string;
   type: 'number' | 'text' | 'date';
-  uniqueRatio: number; // Cardinalidad
+  uniqueRatio: number;
   isMetric: boolean;
   isDimension: boolean;
-  scoreTags: string[]; // Etiquetas como 'avance', 'dinero', 'geografia'
+  scoreTags: string[];
 }
 
 export interface TableStore {
@@ -30,12 +31,19 @@ export interface ColumnMapping {
 
 export interface ChartConfig {
   id: string;
-  type: 'bar' | 'area' | 'line' | 'pie' | 'radar';
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360';
+  tableName: string;
   title: string;
   description?: string;
   dimension: string;
   metric: string;
+  metricLine?: string; // Para tipo combo: segunda métrica (línea)
   color: string;
+  color2?: string;      // Para tipo combo
+  url?: string;
+  previewUrl?: string; // Para tour360
+  startDateCol?: string;
+  endDateCol?: string;
 }
 
 export interface DashboardSection {
@@ -49,7 +57,17 @@ export interface DashboardConfig {
   title: string;
   subtitle: string;
   sections: DashboardSection[];
-  kpis: { label: string; key: string; format: 'currency' | 'percent' | 'number' }[];
+  kpis: { 
+    label: string; 
+    tableName: string; 
+    key: string; 
+    format: 'currency' | 'percent' | 'number' | 'mdp';
+    statusLabel?: string;
+    // statusColor allows tracking status indicators with specific colors in the dashboard
+    statusColor?: string;
+    footerText?: string;
+  }[];
+  headerBgColor: string;
   colors: {
     primary: string;
     secondary: string;

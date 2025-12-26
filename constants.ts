@@ -12,7 +12,7 @@ export const SOBSE_THEME = {
 export const LOGOS = {
   CDMX: "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Logo_de_la_Ciudad_de_M%C3%A9xico.svg/1200px-Logo_de_la_Ciudad_de_M%C3%A9xico.svg.png",
   SOBSE: "https://www.obras.cdmx.gob.mx/storage/app/uploads/public/5f4/691/c32/5f4691c32488a706569107.png",
-  CORAZON: "https://cdn.pixabay.com/photo/2017/09/23/16/39/heart-2779422_1280.png" // Placeholder si no hay uno específico
+  CORAZON: "/assets/img/corazon-snfondo.png"
 };
 
 export const SAMPLE_DATA = [

@@ -13,15 +13,19 @@ const SEMANTIC_SIGNALS = {
 };
 
 export function analyzeMultiTableData(store: TableStore): AnalysisResult {
-  const mainTableName = Object.keys(store).reduce((a, b) => 
+  const tableNames = Object.keys(store);
+  if (tableNames.length === 0) throw new Error("No hay tablas cargadas.");
+
+  // Identificar la tabla principal (la que tenga más datos o sea más rica en métricas)
+  const mainTableName = tableNames.reduce((a, b) => 
     store[a].rows.length > store[b].rows.length ? a : b
   );
-  const mainTable = store[mainTableName];
-  const columns = mainTable.columns;
-  const colNames = Object.keys(columns);
-
-  const scores = { OBRA_PUBLICA: 0, FINANCIERO: 0, PROGRAMA_SOCIAL: 0, OPERATIVO: 0 };
   
+  const mainTable = store[mainTableName];
+  const colNames = Object.keys(mainTable.columns);
+
+  // Clasificación de familia basada en la tabla principal
+  const scores = { OBRA_PUBLICA: 0, FINANCIERO: 0, PROGRAMA_SOCIAL: 0, OPERATIVO: 0 };
   colNames.forEach(name => {
     const lower = name.toLowerCase();
     if (SEMANTIC_SIGNALS.OBRA.some(s => lower.includes(s))) scores.OBRA_PUBLICA += 15;
@@ -33,80 +37,79 @@ export function analyzeMultiTableData(store: TableStore): AnalysisResult {
   let family: DashboardFamily = 'GENERICO';
   const maxScore = Math.max(scores.OBRA_PUBLICA, scores.FINANCIERO, scores.PROGRAMA_SOCIAL, scores.OPERATIVO);
   
-  if (scores.OPERATIVO === maxScore && maxScore > 25) family = 'GENERICO'; // Usamos genérico pero con perfil operativo
+  if (scores.OPERATIVO === maxScore && maxScore > 25) family = 'GENERICO';
   else if (scores.OBRA_PUBLICA === maxScore) family = 'OBRA_PUBLICA';
   else if (scores.FINANCIERO === maxScore) family = 'FINANCIERO';
   else if (scores.PROGRAMA_SOCIAL === maxScore) family = 'PROGRAMA_SOCIAL';
 
-  const findCol = (tags: string[]) => colNames.find(c => tags.some(t => c.toLowerCase().includes(t)));
-  
-  // Priorizar dimensiones operativas
-  const dim = findCol(['cuadrilla', 'utopia', 'alcaldia', 'estatus']) || colNames.find(c => columns[c].isDimension) || colNames[0];
-  const met1 = findCol(['importe', 'monto', 'presupuesto', 'total']) || colNames.find(c => columns[c].type === 'number') || colNames[1];
-  const met2 = findCol(['cantidad', 'avance', 'fisico', '%', 'ejercido']) || met1;
+  const findCol = (tblName: string, tags: string[]) => 
+    Object.keys(store[tblName].columns).find(c => tags.some(t => c.toLowerCase().includes(t)));
 
   const sections: DashboardSection[] = [];
   const kpis: any[] = [];
 
-  // Perfil DETALLADO (estilo el ejemplo del usuario)
-  if (scores.OPERATIVO > 30 || family === 'OBRA_PUBLICA') {
-    kpis.push(
-      { label: "Total Unidades/Obras", key: dim, format: 'number' },
-      { label: "Inversión/Costo Total", key: met1, format: 'currency' },
-      { label: "Personal/Avance", key: met2, format: 'number' }
-    );
+  // Intentar distribuir KPIs entre las tablas disponibles
+  tableNames.forEach((tblName, idx) => {
+    const tblCols = Object.keys(store[tblName].columns);
+    const m1 = findCol(tblName, ['monto', 'presupuesto', 'total', 'importe']) || tblCols.find(c => store[tblName].columns[c].isMetric);
+    const dim = findCol(tblName, ['nombre', 'unidad', 'alcaldia', 'categoria']) || tblCols.find(c => store[tblName].columns[c].isDimension) || tblCols[0];
 
-    sections.push({
-      title: "Análisis Ejecutivo Global",
-      description: "Distribución de recursos y costos por agrupador principal",
-      charts: [
-        { id: 'g1', type: 'bar', title: `Costo Total por ${dim}`, dimension: dim, metric: met1, color: THEME_CONST.GUINDA },
-        { id: 'g2', type: 'pie', title: `Distribución de ${met2}`, dimension: dim, metric: met2, color: THEME_CONST.VERDE }
-      ]
-    });
+    if (idx < 4 && m1) {
+      kpis.push({
+        label: `${tblName.split('.')[0]}: Total`,
+        tableName: tblName,
+        key: m1,
+        format: 'currency'
+      });
+    }
 
-    // Detectar si hay clasificaciones para un desglose
-    const subDim = findCol(['clasificacion', 'tipo', 'concepto']);
-    if (subDim) {
+    // Crear una sección por cada tabla importante
+    if (idx < 3) {
+      const metric = m1 || tblCols[0];
+      const dimension = dim;
+      
       sections.push({
-        title: "Desglose Operativo por Categoría",
-        description: `Análisis detallado de conceptos y clasificaciones en ${dim}`,
+        title: `Análisis de ${tblName.split('.')[0]}`,
+        description: `Visualización de datos fuente: ${tblName}`,
         charts: [
-          { id: 'd1', type: 'bar', title: `Top 10 Conceptos`, dimension: subDim, metric: met1, color: THEME_CONST.DORADO },
-          { id: 'd2', type: 'pie', title: 'Participación de Clasificación', dimension: subDim, metric: met1, color: THEME_CONST.GUINDA }
+          { 
+            id: `c-${idx}-1`, 
+            type: 'bar', 
+            tableName: tblName,
+            title: `Distribución por ${dimension}`, 
+            dimension, 
+            metric, 
+            color: idx % 2 === 0 ? THEME_CONST.GUINDA : THEME_CONST.VERDE 
+          },
+          { 
+            id: `c-${idx}-2`, 
+            type: 'pie', 
+            tableName: tblName,
+            title: `Participación de ${metric}`, 
+            dimension, 
+            metric, 
+            color: idx % 2 === 0 ? THEME_CONST.DORADO : THEME_CONST.GUINDA 
+          }
         ]
       });
     }
-  } else {
-    // Perfil Estándar para otros casos
-    kpis.push(
-      { label: "Registros Totales", key: colNames[0], format: 'number' },
-      { label: "Valor Acumulado", key: met1, format: 'currency' }
-    );
-    sections.push({
-      title: "Resumen de Gestión",
-      description: "Vista simplificada de indicadores clave",
-      charts: [
-        { id: 's1', type: 'bar', title: 'Rendimiento por Categoría', dimension: dim, metric: met1, color: THEME_CONST.VERDE },
-        { id: 's2', type: 'area', title: 'Tendencia de Valores', dimension: dim, metric: met1, color: THEME_CONST.DORADO }
-      ]
-    });
-  }
+  });
 
   return {
-    suggestedMapping: { category: dim, metric1: met1, metric2: met2 },
+    suggestedMapping: { category: '', metric1: '', metric2: '' },
     suggestedConfig: {
       family,
-      title: family === 'OBRA_PUBLICA' ? "Tablero de Control de Infraestructura" : `Tablero Ejecutivo: ${dim}`,
-      subtitle: "Análisis semántico avanzado - Secretaría de Obras y Servicios CDMX",
+      title: "Consolidado de Datos SOBSE",
+      subtitle: "Panel unificado basado en múltiples fuentes de información de auditoría.",
       sections,
-      kpis,
+      kpis: kpis.length > 0 ? kpis : [{ label: "Registros", tableName: mainTableName, key: colNames[0], format: 'number' }],
+      // Fix: Added missing required property 'headerBgColor'
+      headerBgColor: '#0F172A',
       colors: { primary: THEME_CONST.GUINDA, secondary: THEME_CONST.VERDE, accent: THEME_CONST.DORADO }
     },
     aiInsights: [
-      `Familia detectada: ${family}`,
-      `Dimensión clave: ${dim}`,
-      `Lógica aplicada: Perfil de Explorador de Datos SOBSE`
+      `Tablas procesadas: ${tableNames.length}`,
+      `Se han integrado métricas de diferentes archivos.`
     ],
     confidenceScore: maxScore
   };

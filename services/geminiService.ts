@@ -26,6 +26,7 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
   
   IMPORTANTE: Solo responde con el objeto JSON solicitado. No incluyas explicaciones adicionales.`;
 
+  // Updated responseSchema to match DashboardConfig mandatory properties and include statusColor
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: [{ parts: [{ text: prompt }] }],
@@ -48,8 +49,19 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
           suggestedConfig: {
             type: Type.OBJECT,
             properties: {
+              family: { type: Type.STRING },
               title: { type: Type.STRING },
               subtitle: { type: Type.STRING },
+              headerBgColor: { type: Type.STRING },
+              colors: {
+                type: Type.OBJECT,
+                properties: {
+                  primary: { type: Type.STRING },
+                  secondary: { type: Type.STRING },
+                  accent: { type: Type.STRING }
+                },
+                required: ["primary", "secondary", "accent"]
+              },
               sections: {
                 type: Type.ARRAY,
                 items: {
@@ -64,13 +76,14 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
                         properties: {
                           id: { type: Type.STRING },
                           type: { type: Type.STRING },
+                          tableName: { type: Type.STRING },
                           title: { type: Type.STRING },
                           description: { type: Type.STRING },
                           dimension: { type: Type.STRING },
                           metric: { type: Type.STRING },
                           color: { type: Type.STRING }
                         },
-                        required: ["type", "title", "dimension", "metric", "color"]
+                        required: ["type", "title", "dimension", "metric", "color", "tableName"]
                       }
                     }
                   },
@@ -83,14 +96,17 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
                   type: Type.OBJECT,
                   properties: {
                     label: { type: Type.STRING },
+                    tableName: { type: Type.STRING },
                     key: { type: Type.STRING },
-                    format: { type: Type.STRING }
+                    format: { type: Type.STRING },
+                    statusLabel: { type: Type.STRING },
+                    statusColor: { type: Type.STRING }
                   },
-                  required: ["label", "key", "format"]
+                  required: ["label", "key", "format", "tableName"]
                 }
               }
             },
-            required: ["title", "subtitle", "sections", "kpis"]
+            required: ["title", "subtitle", "sections", "kpis", "family", "headerBgColor", "colors"]
           },
           aiInsights: {
             type: Type.ARRAY,
