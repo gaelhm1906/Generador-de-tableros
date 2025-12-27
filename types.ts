@@ -31,19 +31,20 @@ export interface ColumnMapping {
 
 export interface ChartConfig {
   id: string;
-  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360';
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar';
   tableName: string;
   title: string;
   description?: string;
   dimension: string;
-  metric: string;
-  metricLine?: string; // Para tipo combo: segunda métrica (línea)
+  metric: string; // Métrica principal
+  metrics?: string[]; // Para múltiples series (Barras agrupadas o líneas múltiples)
+  tooltipMetrics?: string[]; 
   color: string;
-  color2?: string;      // Para tipo combo
+  color2?: string;
   url?: string;
-  previewUrl?: string; // Para tour360
-  startDateCol?: string;
-  endDateCol?: string;
+  previewUrl?: string;
+  startDateCol?: string; // Para Timeline
+  endDateCol?: string;   // Para Timeline
 }
 
 export interface DashboardSection {
@@ -52,21 +53,24 @@ export interface DashboardSection {
   charts: ChartConfig[];
 }
 
+export interface KPIConfig {
+  label: string; 
+  tableName: string; 
+  key: string; 
+  format: 'currency' | 'percent' | 'number' | 'mdp';
+  statusLabel?: string;
+  statusColor?: string;
+  footerText?: string;
+  width?: '1/4' | '1/2' | 'full'; // Control de tamaño de la card
+}
+
 export interface DashboardConfig {
   family: DashboardFamily;
   title: string;
   subtitle: string;
+  topPillText?: string;
   sections: DashboardSection[];
-  kpis: { 
-    label: string; 
-    tableName: string; 
-    key: string; 
-    format: 'currency' | 'percent' | 'number' | 'mdp';
-    statusLabel?: string;
-    // statusColor allows tracking status indicators with specific colors in the dashboard
-    statusColor?: string;
-    footerText?: string;
-  }[];
+  kpis: KPIConfig[];
   headerBgColor: string;
   colors: {
     primary: string;
