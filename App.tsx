@@ -99,7 +99,7 @@ const App: React.FC = () => {
       id: `c-${Date.now()}`,
       type,
       tableName: firstTable,
-      title: type === 'tour360' ? "Nuevo Tour 360" : "Nuevo Reporte",
+      title: "Nueva Herramienta",
       dimension: cols[0],
       metric: cols[1] || cols[0],
       metrics: [],
@@ -244,6 +244,10 @@ const App: React.FC = () => {
                               <option value="bar">📊 Barras Simple</option>
                               <option value="pie">⭕ Circular (Pay)</option>
                               <option value="line">📈 Líneas</option>
+                              <option value="territorial">🗺️ Distribución Territorial</option>
+                              <option value="technicalFile">📄 Ficha Técnica</option>
+                              <option value="investment">💰 Desglose Inversión</option>
+                              <option value="programFile">📋 Ficha del Programa</option>
                               <option value="timeline">📅 Línea de Tiempo</option>
                               <option value="webview">🌐 Web Institucional</option>
                               <option value="tour360">🏙️ Recorrido 360</option>
@@ -273,12 +277,30 @@ const App: React.FC = () => {
                                 </div>
                             </div>
                           )}
+
+                          {(chart.type === 'technicalFile' || chart.type === 'multiBar') && (
+                            <div className="space-y-2 pt-2 border-t border-white/5">
+                              <p className="text-[8px] font-black text-slate-500 uppercase ml-1">Series Adicionales</p>
+                              <div className="bg-[#0F172A] p-3 rounded-xl max-h-40 overflow-y-auto space-y-1.5 border border-white/10">
+                                {Object.keys(store[chart.tableName]?.columns || {}).filter(k => store[chart.tableName].columns[k].isMetric).map(col => (
+                                  <label key={col} className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1.5 rounded-lg transition-colors group/row">
+                                    <input type="checkbox" className="w-4 h-4 rounded accent-dorado" checked={chart.metrics?.includes(col)} onChange={(e) => {
+                                      const curr = chart.metrics || [];
+                                      const next = e.target.checked ? [...curr, col] : curr.filter(c => c !== col);
+                                      updateChart(sIdx, cIdx, { metrics: next });
+                                    }} />
+                                    <span className="text-[9px] font-bold text-slate-400 group-hover/row:text-white">{store[chart.tableName].columns[col].alias || col}</span>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => addChart(sIdx, 'bar')} className="py-2.5 bg-white/5 text-[9px] font-black uppercase rounded-xl hover:bg-white/10 transition-all border border-white/10">+ Gráfico</button>
-                      <button onClick={() => addChart(sIdx, 'tour360')} className="py-2.5 bg-dorado/10 text-[9px] font-black uppercase rounded-xl text-dorado hover:bg-dorado/20 border border-dorado/20 transition-all">+ Herramienta</button>
+                      <button onClick={() => addChart(sIdx, 'territorial')} className="py-2.5 bg-dorado/10 text-[9px] font-black uppercase rounded-xl text-dorado hover:bg-dorado/20 border border-dorado/20 transition-all">+ Herramienta</button>
                     </div>
                   </div>
                 ))}

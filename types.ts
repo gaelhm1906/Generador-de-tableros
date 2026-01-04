@@ -31,20 +31,20 @@ export interface ColumnMapping {
 
 export interface ChartConfig {
   id: string;
-  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar';
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar' | 'territorial' | 'technicalFile' | 'investment' | 'programFile';
   tableName: string;
   title: string;
   description?: string;
   dimension: string;
-  metric: string; // Métrica principal
-  metrics?: string[]; // Para múltiples series (Barras agrupadas o líneas múltiples)
+  metric: string; 
+  metrics?: string[]; 
   tooltipMetrics?: string[]; 
   color: string;
   color2?: string;
   url?: string;
   previewUrl?: string;
-  startDateCol?: string; // Para Timeline
-  endDateCol?: string;   // Para Timeline
+  startDateCol?: string; 
+  endDateCol?: string;   
 }
 
 export interface DashboardSection {
@@ -61,7 +61,7 @@ export interface KPIConfig {
   statusLabel?: string;
   statusColor?: string;
   footerText?: string;
-  width?: '1/4' | '1/2' | 'full'; // Control de tamaño de la card
+  width?: '1/4' | '1/2' | 'full'; 
 }
 
 export interface DashboardConfig {

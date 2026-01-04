@@ -81,7 +81,7 @@ const DashboardPreview: React.FC<Props> = ({ store, config, onUpdateConfig }) =>
       const node = map.get(cat);
       series.forEach(s => node[s] += getVal(s));
     });
-    return Array.from(map.values()).sort((a, b) => (b[chart.metric] || 0) - (a[chart.metric] || 0)).slice(0, 10);
+    return Array.from(map.values()).sort((a, b) => (b[chart.metric] || 0) - (a[chart.metric] || 0)).slice(0, 20);
   };
 
   const kpis = useMemo(() => {
@@ -126,7 +126,6 @@ const DashboardPreview: React.FC<Props> = ({ store, config, onUpdateConfig }) =>
 
   return (
     <div className="space-y-16 pb-32">
-      {/* HEADER INSTITUCIONAL: LOGO IZQUIERDA + TEXTO MONUMENTAL */}
       <div className="bg-white px-12 py-12 rounded-t-[4rem] shadow-sm flex items-center gap-14 border-b border-slate-100">
         <div className="flex items-center gap-12">
            <img src={LOGOS.CORAZON} className="h-28 w-auto object-contain logo-interactivo" alt="Logo SOBSE Corazón" />
@@ -191,10 +190,227 @@ const DashboardPreview: React.FC<Props> = ({ store, config, onUpdateConfig }) =>
           <div className="grid grid-cols-12 gap-10">
             {sec.charts.map((chart, cIdx) => {
               const data = processChartData(chart);
-              const isFull = ['timeline', 'tour360', 'webview', 'multiBar', 'line'].includes(chart.type);
+              const isFull = ['timeline', 'tour360', 'webview', 'multiBar', 'line', 'territorial', 'technicalFile', 'investment', 'programFile'].includes(chart.type);
               const span = isFull ? 'col-span-12' : 'col-span-12 lg:col-span-6';
               const dimAlias = getAlias(chart.tableName, chart.dimension);
               const metAlias = getAlias(chart.tableName, chart.metric);
+
+              if (chart.type === 'territorial') {
+                const total = data.reduce((acc, d) => acc + d[chart.metric], 0);
+                const leader = data[0];
+                return (
+                  <div key={cIdx} className="col-span-12 bg-white rounded-[4rem] p-16 border border-slate-100 shadow-sm flex flex-col gap-12 group">
+                    <div className="space-y-2">
+                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">DISTRIBUCIÓN TERRITORIAL</h4>
+                       <h3 className="text-4xl font-[900] text-guinda uppercase italic">{chart.title}</h3>
+                       <p className="text-slate-500 text-lg italic">{chart.description}</p>
+                    </div>
+
+                    <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-8">
+                       <div className="flex justify-between items-end">
+                          <div className="bg-guinda text-white px-8 py-3 rounded-full text-[11px] font-black uppercase italic shadow-xl">
+                             Líder: {leader?.name} · {leader?.[chart.metric].toLocaleString()} {metAlias}
+                          </div>
+                          <div className="bg-dorado/10 text-dorado border border-dorado/20 px-8 py-3 rounded-full text-[11px] font-black uppercase italic">
+                             Total: {total.toLocaleString()} {metAlias}
+                          </div>
+                       </div>
+                       <div className="h-6 bg-slate-200 rounded-full overflow-hidden relative shadow-inner">
+                          <div className="h-full bg-guinda transition-all duration-1000 shadow-lg shadow-guinda/20" style={{ width: '100%' }} />
+                       </div>
+                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {data.slice(0, 15).map((d, i) => (
+                            <div key={i} className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border border-slate-100 hover:border-guinda/30 transition-all group/row shadow-sm">
+                               <div className="flex items-center gap-4">
+                                  <span className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[11px] font-black text-slate-400 group-hover/row:bg-guinda group-hover/row:text-white transition-colors">{i+1}</span>
+                                  <span className="text-[12px] font-bold text-slate-600 uppercase italic tracking-tighter truncate max-w-[150px]">{d.name}</span>
+                               </div>
+                               <span className="text-lg font-black text-guinda tracking-tighter">{d[chart.metric].toLocaleString()} <span className="text-[9px] text-slate-400 font-bold uppercase">{metAlias}</span></span>
+                            </div>
+                          ))}
+                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (chart.type === 'technicalFile') {
+                const metricsToUse = [chart.metric, ...(chart.metrics || [])];
+                const totals = metricsToUse.map(m => {
+                  const val = store[chart.tableName].rows.reduce((acc, r) => {
+                    const v = r[m];
+                    const num = typeof v === 'number' ? v : parseFloat(String(v).replace(/[^0-9.-]+/g, "")) || 0;
+                    return acc + num;
+                  }, 0);
+                  return { label: getAlias(chart.tableName, m), value: val };
+                });
+
+                return (
+                  <div key={cIdx} className="col-span-12 bg-white rounded-[4rem] p-16 border border-slate-100 shadow-sm flex flex-col gap-12">
+                    <div className="flex justify-between items-start">
+                       <div className="space-y-2">
+                          <div className="inline-flex gap-3 items-center">
+                             <span className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-[10px] font-black uppercase">FICHA</span>
+                             <h4 className="text-2xl font-[900] text-slate-900 uppercase italic leading-none">{chart.title}</h4>
+                          </div>
+                          <p className="text-slate-500 italic max-w-3xl leading-relaxed">{chart.description}</p>
+                       </div>
+                       <div className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest">PROYECTO ACTIVO</div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                       {totals.map((t, i) => (
+                         <div key={i} className="bg-slate-50/50 p-8 rounded-[3rem] border border-slate-100 space-y-2 hover:bg-white transition-colors">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{t.label}</p>
+                            <p className="text-4xl font-[900] text-slate-900 tracking-tighter leading-none">{t.value.toLocaleString()}</p>
+                            <p className="text-[10px] font-bold text-slate-400 italic">Datos acumulados fuente</p>
+                         </div>
+                       ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                       <div className="bg-[#691C32]/[0.02] p-10 rounded-[3.5rem] border border-[#691C32]/10 space-y-6">
+                          <h5 className="text-[11px] font-black text-guinda uppercase tracking-[0.2em] italic border-b border-guinda/10 pb-4">Objetivos Principales</h5>
+                          <ul className="space-y-4">
+                             <li className="flex gap-4 items-start group">
+                                <span className="text-guinda mt-1 group-hover:scale-110 transition-transform">●</span>
+                                <p className="text-slate-600 text-[13px] leading-relaxed">Consolidar el desarrollo de infraestructura de alto impacto mediante el análisis preciso de <b>{dimAlias}</b>.</p>
+                             </li>
+                             <li className="flex gap-4 items-start group">
+                                <span className="text-guinda mt-1 group-hover:scale-110 transition-transform">●</span>
+                                <p className="text-slate-600 text-[13px] leading-relaxed">Garantizar la transparencia operativa y física de los proyectos reportados en las bases de datos institucionales.</p>
+                             </li>
+                             <li className="flex gap-4 items-start group">
+                                <span className="text-guinda mt-1 group-hover:scale-110 transition-transform">●</span>
+                                <p className="text-slate-600 text-[13px] leading-relaxed">Optimizar la toma de decisiones basada en la distribución de <b>{metAlias}</b> en el territorio.</p>
+                             </li>
+                          </ul>
+                       </div>
+                       <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-6">
+                          <h5 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] italic border-b border-slate-100 pb-4">Lectura Rápida</h5>
+                          <div className="space-y-5">
+                             <p className="text-slate-700 text-[14px] leading-relaxed">La mayor parte de la intervención se concentra en la categoría de <b>{totals[0]?.label || 'Datos'}</b> con un impacto directo en la productividad sectorial.</p>
+                             <p className="text-slate-700 text-[14px] leading-relaxed">El volumen de los indicadores refleja el compromiso con el eje rector del programa de desarrollo urbano.</p>
+                             <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Resumen Operativo</p>
+                                <p className="text-slate-600 text-[12px] italic">Este tablero permite comparar avances técnicos entre periodos y priorizar tramos críticos para supervisión.</p>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (chart.type === 'investment') {
+                const totalMetric = data.reduce((acc, d) => acc + d[chart.metric], 0);
+                return (
+                  <div key={cIdx} className="col-span-12 bg-white rounded-[4rem] p-16 border border-slate-100 shadow-sm flex flex-col gap-12">
+                     <div className="space-y-2">
+                        <h4 className="text-3xl font-[950] text-guinda uppercase italic tracking-tighter">Desglose de la inversión</h4>
+                        <p className="text-slate-500 italic max-w-2xl leading-relaxed">Distribución de la inversión programada por concepto. Permite identificar rápidamente la concentración de recursos.</p>
+                     </div>
+
+                     <div className="space-y-0">
+                        <div className="grid grid-cols-12 gap-8 border-b border-slate-100 pb-6 px-4">
+                           <div className="col-span-6 text-[10px] font-black text-slate-400 uppercase tracking-widest">Concepto</div>
+                           <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Inversión (MDP)</div>
+                           <div className="col-span-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Distribución</div>
+                        </div>
+                        <div className="divide-y divide-slate-50">
+                           {data.slice(0, 8).map((d, i) => {
+                             const pct = ((d[chart.metric] / (totalMetric || 1)) * 100).toFixed(1);
+                             return (
+                               <div key={i} className="grid grid-cols-12 gap-8 py-8 px-4 items-center group hover:bg-slate-50/50 transition-colors">
+                                  <div className="col-span-6 space-y-1">
+                                     <p className="text-lg font-[800] text-slate-900 tracking-tighter uppercase leading-none">{d.name}</p>
+                                     <p className="text-[10px] font-bold text-slate-400 uppercase italic">Categoría del Proyecto</p>
+                                  </div>
+                                  <div className="col-span-3 text-right">
+                                     <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{d[chart.metric].toLocaleString()}</p>
+                                  </div>
+                                  <div className="col-span-3 flex items-center gap-4 justify-end">
+                                     <div className="w-24 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                                        <div className="h-full bg-guinda/80 group-hover:bg-guinda transition-all" style={{ width: `${pct}%` }} />
+                                     </div>
+                                     <p className="text-[12px] font-black text-slate-400 w-10 text-right">{pct}%</p>
+                                  </div>
+                               </div>
+                             );
+                           })}
+                        </div>
+                        <div className="grid grid-cols-12 gap-8 pt-8 border-t-2 border-slate-900 px-4 mt-4">
+                           <div className="col-span-6">
+                              <p className="text-2xl font-[900] text-slate-900 uppercase italic tracking-tighter leading-none">Total Programado</p>
+                           </div>
+                           <div className="col-span-3 text-right">
+                              <p className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{totalMetric.toLocaleString()}</p>
+                           </div>
+                           <div className="col-span-3 text-right">
+                              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">100% de la inversión</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+                );
+              }
+
+              if (chart.type === 'programFile') {
+                return (
+                  <div key={cIdx} className="col-span-12 bg-white rounded-[4rem] p-16 border border-slate-100 shadow-sm flex flex-col gap-12">
+                     <div className="flex justify-between items-start">
+                        <div className="inline-flex items-center gap-4">
+                           <span className="bg-blue-600 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase shadow-lg shadow-blue-600/20">FICHA DEL PROGRAMA</span>
+                           <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] italic">DE REVITALIZACIÓN</h3>
+                        </div>
+                        <div className="bg-emerald-50 text-emerald-600 border border-emerald-100 px-8 py-3 rounded-full text-[11px] font-black uppercase italic">Vigencia 2024-2030</div>
+                     </div>
+
+                     <div className="space-y-4">
+                        <h2 className="text-4xl font-[900] text-guinda uppercase italic tracking-tighter">{chart.title}</h2>
+                        <p className="text-slate-500 italic max-w-4xl text-lg leading-relaxed">{chart.description || "Estrategia integral para el desarrollo y fortalecimiento de los núcleos de servicios y convivencia barrial."}</p>
+                     </div>
+
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-4">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">OBJETIVO</p>
+                           <p className="text-xl font-[800] text-slate-900 tracking-tight leading-relaxed uppercase">Modernizar espacios públicos y fortalecer su papel como nodos de abasto popular y bienestar social.</p>
+                        </div>
+                        <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-4">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">COBERTURA</p>
+                           <p className="text-xl font-[800] text-slate-900 tracking-tight leading-relaxed uppercase">Presencia en las demarcaciones territoriales con mayor densidad y necesidad de intervención.</p>
+                        </div>
+                        <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-4">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">COMPONENTES</p>
+                           <p className="text-xl font-[800] text-slate-900 tracking-tight leading-relaxed uppercase">Intervenciones físicas, mantenimiento mayor y sistemas de eficiencia energética y captación de lluvia.</p>
+                        </div>
+                        <div className="bg-slate-50/50 p-10 rounded-[3.5rem] border border-slate-100 space-y-4">
+                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">FINANCIAMIENTO</p>
+                           <p className="text-xl font-[800] text-slate-900 tracking-tight leading-relaxed uppercase">Inversión plurianual garantizada mediante el presupuesto de egresos del ejercicio fiscal.</p>
+                        </div>
+                     </div>
+
+                     <div className="space-y-6 pt-6">
+                        <h4 className="text-[11px] font-black text-guinda uppercase tracking-widest border-b border-guinda/10 pb-4">Indicadores Derivados</h4>
+                        <ul className="space-y-4">
+                           <li className="flex gap-4 items-center group">
+                              <span className="w-2.5 h-2.5 rounded-full bg-guinda shadow-lg"></span>
+                              <p className="text-slate-600 text-sm font-medium">Incremento sostenido en la calidad de servicios públicos en zonas de alta marginación.</p>
+                           </li>
+                           <li className="flex gap-4 items-center group">
+                              <span className="w-2.5 h-2.5 rounded-full bg-guinda shadow-lg"></span>
+                              <p className="text-slate-600 text-sm font-medium">Proyectos estratégicos fortalecen los nodos de abasto metropolitano y cohesión barrial.</p>
+                           </li>
+                        </ul>
+                        <div className="flex flex-wrap gap-4 pt-4">
+                           {['#Infraestructura', '#Bienestar', '#Revitalizacion', '#CDMX'].map(tag => (
+                             <span key={tag} className="bg-slate-100 text-slate-500 px-6 py-2 rounded-full text-[10px] font-black uppercase">{tag}</span>
+                           ))}
+                        </div>
+                     </div>
+                  </div>
+                );
+              }
 
               if (chart.type === 'tour360') {
                 return (
@@ -236,7 +452,6 @@ const DashboardPreview: React.FC<Props> = ({ store, config, onUpdateConfig }) =>
                     <ResponsiveContainer width="100%" height="100%">
                       {chart.type === 'pie' ? (
                         <PieChart>
-                          {/* CORRECCIÓN: dataKey usa chart.metric para asegurar que se muestren los datos */}
                           <Pie data={data} innerRadius={100} outerRadius={140} paddingAngle={8} dataKey={chart.metric} stroke="none">
                             {data.map((_, index) => <Cell key={index} fill={[chart.color, '#006341', '#C5A572', '#1E293B'][index % 4]} />)}
                           </Pie>
