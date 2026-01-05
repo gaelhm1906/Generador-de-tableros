@@ -56,45 +56,10 @@ const App: React.FC = () => {
     setLoading(false);
   };
 
-  const updateColumnAlias = (tableName: string, colName: string, newAlias: string) => {
-    setStore(prev => ({
-      ...prev, [tableName]: { ...prev[tableName], columns: { ...prev[tableName].columns, [colName]: { ...prev[tableName].columns[colName], alias: newAlias } } }
-    }));
-  };
-
-  const addKPI = () => {
-    if (!editableConfig) return;
-    const firstTable = Object.keys(store)[0];
-    const firstKey = Object.keys(store[firstTable].columns)[0];
-    const newKPI: KPIConfig = { label: "Nuevo Indicador", tableName: firstTable, key: firstKey, format: 'number', width: '1/4', statusLabel: 'Meta', statusColor: '#691C32' };
-    setEditableConfig({ ...editableConfig, kpis: [...editableConfig.kpis, newKPI] });
-  };
-
-  const updateKPI = (idx: number, fields: Partial<KPIConfig>) => {
-    if (!editableConfig) return;
-    const kpis = [...editableConfig.kpis];
-    if (Object.keys(fields).length === 0) kpis.splice(idx, 1);
-    else kpis[idx] = { ...kpis[idx], ...fields };
-    setEditableConfig({ ...editableConfig, kpis });
-  };
-
-  const addSection = () => {
-    if (!editableConfig) return;
-    setEditableConfig({ ...editableConfig, sections: [...editableConfig.sections, { title: "NUEVA SECCIÓN", description: "", charts: [] }] });
-  };
-
-  const updateSection = (sIdx: number, fields: Partial<DashboardSection>) => {
-    if (!editableConfig) return;
-    const sections = [...editableConfig.sections];
-    sections[sIdx] = { ...sections[sIdx], ...fields };
-    setEditableConfig({ ...editableConfig, sections });
-  };
-
   const addChart = (sIdx: number, type: ChartConfig['type']) => {
     if (!editableConfig) return;
     const firstTable = Object.keys(store)[0];
     const cols = Object.keys(store[firstTable].columns);
-    const dateCols = cols.filter(c => store[firstTable].columns[c].type === 'date');
     const newChart: ChartConfig = {
       id: `c-${Date.now()}`,
       type,
@@ -102,10 +67,7 @@ const App: React.FC = () => {
       title: "Nueva Herramienta",
       dimension: cols[0],
       metric: cols[1] || cols[0],
-      metrics: [],
       url: (type === 'webview' || type === 'tour360') ? 'https://www.google.com/maps' : undefined,
-      startDateCol: type === 'timeline' ? dateCols[0] : undefined,
-      endDateCol: type === 'timeline' ? (dateCols[1] || dateCols[0]) : undefined,
       color: SOBSE_THEME.GUINDA,
     };
     const sections = [...editableConfig.sections];
@@ -121,16 +83,12 @@ const App: React.FC = () => {
     setEditableConfig({ ...editableConfig, sections });
   };
 
-  const handleExport = () => {
+  const updateKPI = (idx: number, fields: Partial<KPIConfig>) => {
     if (!editableConfig) return;
-    const html = generateExportableHtml(store, editableConfig, { category: '', metric1: '', metric2: '' });
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `reporte-sobse.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const kpis = [...editableConfig.kpis];
+    if (Object.keys(fields).length === 0) kpis.splice(idx, 1);
+    else kpis[idx] = { ...kpis[idx], ...fields };
+    setEditableConfig({ ...editableConfig, kpis });
   };
 
   const inputBase = "bg-[#0F172A] border border-white/20 text-white text-[10px] p-2.5 rounded-xl outline-none focus:border-dorado transition-all w-full";
@@ -156,7 +114,7 @@ const App: React.FC = () => {
                 <input type="file" className="hidden" multiple onChange={e => e.target.files && processFiles(e.target.files)} />
               </label>
               {Object.keys(store).map(name => (
-                <button key={name} onClick={() => setSelectedTable(name)} className={`w-full text-left px-5 py-4 rounded-2xl text-[10px] font-bold border transition-all ${selectedTable === name ? 'bg-guinda border-guinda text-white shadow-xl' : 'bg-white/[0.03] border-white/5 text-slate-400 hover:bg-white/5'}`}>
+                <button key={name} onClick={() => setSelectedTable(name)} className={`w-full text-left px-5 py-4 rounded-2xl text-[10px] font-bold border transition-all ${selectedTable === name ? 'bg-guinda border-guinda text-white' : 'bg-white/[0.03] border-white/5 text-slate-400'}`}>
                   {name}
                 </button>
               ))}
@@ -170,137 +128,85 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-10 pb-20 animate-in fade-in">
+              {/* KPIs Config */}
               <div className="space-y-6">
-                <div className="flex justify-between items-center px-2">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Configurar KPIs</h4>
-                  <button onClick={addKPI} className="text-[9px] font-black text-dorado bg-dorado/10 px-4 py-2 rounded-full hover:bg-dorado/20 transition-all">+ KPI</button>
-                </div>
+                <h4 className="text-[10px] font-black text-slate-500 uppercase px-2 italic">Configurar KPIs</h4>
                 {editableConfig.kpis.map((kpi, idx) => (
-                  <div key={idx} className="bg-white/[0.04] p-6 rounded-3xl border border-white/10 space-y-4 relative group">
-                    <button onClick={() => updateKPI(idx, {})} className="absolute top-4 right-4 text-white/20 hover:text-red-500 transition-all">✕</button>
-                    <input value={kpi.label} onChange={e => updateKPI(idx, {label: e.target.value})} className="bg-transparent text-[11px] font-black text-white uppercase outline-none w-full border-b border-white/10 pb-1 focus:border-dorado" />
+                  <div key={idx} className="bg-white/[0.04] p-6 rounded-3xl border border-white/10 space-y-4">
+                    <input value={kpi.label} onChange={e => updateKPI(idx, {label: e.target.value})} className="bg-transparent text-[11px] font-black text-white uppercase outline-none w-full border-b border-white/10 pb-1" />
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Origen Datos</label>
-                        <select value={kpi.tableName} onChange={e => updateKPI(idx, {tableName: e.target.value})} className={selectStyle}>
-                          {Object.keys(store).map(tn => <option key={tn} value={tn}>{tn}</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Métrica</label>
-                        <select value={kpi.key} onChange={e => updateKPI(idx, {key: e.target.value})} className={selectStyle}>
-                          {Object.keys(store[kpi.tableName]?.columns || {}).filter(c => store[kpi.tableName].columns[c].isMetric).map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                      </div>
+                      <select value={kpi.tableName} onChange={e => updateKPI(idx, {tableName: e.target.value})} className={selectStyle}>
+                        {Object.keys(store).map(tn => <option key={tn} value={tn}>{tn}</option>)}
+                      </select>
+                      <select value={kpi.key} onChange={e => updateKPI(idx, {key: e.target.value})} className={selectStyle}>
+                        {Object.keys(store[kpi.tableName]?.columns || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
                     </div>
                   </div>
                 ))}
               </div>
 
+              {/* Charts Config */}
               <div className="space-y-8">
-                <div className="flex justify-between items-center px-2">
-                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">Visualizaciones</h4>
-                  <button onClick={addSection} className="text-[9px] font-black text-white bg-emerald-600 px-4 py-2 rounded-full hover:bg-emerald-500 transition-colors">+ Sección</button>
-                </div>
+                <h4 className="text-[10px] font-black text-slate-500 uppercase px-2 italic">Visualizaciones</h4>
                 {editableConfig.sections.map((sec, sIdx) => (
                   <div key={sIdx} className="bg-white/[0.04] p-6 rounded-[2.5rem] border border-white/10 space-y-4">
-                    <input value={sec.title} onChange={e => updateSection(sIdx, {title: e.target.value})} className="bg-transparent text-[11px] font-black text-white uppercase outline-none w-full border-b border-white/10 pb-2 focus:border-dorado" />
-                    <div className="space-y-4">
-                      {sec.charts.map((chart, cIdx) => (
-                        <div key={chart.id} className="bg-black/40 p-5 rounded-2xl border border-white/10 space-y-4 relative group">
-                          <button onClick={() => updateChart(sIdx, cIdx, {})} className="absolute top-2 right-2 text-white/10 hover:text-red-500 transition-all">✕</button>
-                          
-                          <div className="flex items-center gap-3">
-                            <input type="color" value={chart.color} onChange={e => updateChart(sIdx, cIdx, {color: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer bg-transparent" />
-                            <input value={chart.title} onChange={e => updateChart(sIdx, cIdx, {title: e.target.value})} className="bg-transparent text-[10px] font-black text-slate-200 w-full outline-none focus:text-white" />
-                          </div>
-                          
-                          <div className="grid grid-cols-1 gap-3 border-t border-white/5 pt-3">
-                            <div className="space-y-1">
-                              <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Base de Datos</label>
-                              <select value={chart.tableName} onChange={e => updateChart(sIdx, cIdx, {tableName: e.target.value})} className={selectStyle}>
-                                {Object.keys(store).map(tn => <option key={tn} value={tn}>{tn}</option>)}
-                              </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="space-y-1">
-                                <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Eje X (Categoría)</label>
-                                <select value={chart.dimension} onChange={e => updateChart(sIdx, cIdx, {dimension: e.target.value})} className={selectStyle}>
-                                  {Object.keys(store[chart.tableName]?.columns || {}).filter(c => store[chart.tableName].columns[c].isDimension).map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                              </div>
-                              <div className="space-y-1">
-                                <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Eje Y (Métrica)</label>
-                                <select value={chart.metric} onChange={e => updateChart(sIdx, cIdx, {metric: e.target.value})} className={selectStyle}>
-                                  {Object.keys(store[chart.tableName]?.columns || {}).filter(c => store[chart.tableName].columns[c].isMetric).map(c => <option key={c} value={c}>{c}</option>)}
-                                </select>
-                              </div>
-                            </div>
-                          </div>
+                    <input value={sec.title} onChange={e => {
+                        const next = [...editableConfig.sections];
+                        next[sIdx].title = e.target.value;
+                        setEditableConfig({...editableConfig, sections: next});
+                    }} className="bg-transparent text-[11px] font-black text-white uppercase outline-none w-full border-b border-white/10 pb-2" />
+                    {sec.charts.map((chart, cIdx) => (
+                      <div key={chart.id} className="bg-black/40 p-5 rounded-2xl border border-white/10 space-y-4 relative">
+                        <button onClick={() => updateChart(sIdx, cIdx, {})} className="absolute top-2 right-2 text-white/10 hover:text-red-500 transition-all">✕</button>
+                        
+                        <div className="space-y-3">
+                           <div className="flex items-center gap-3">
+                             <input type="color" value={chart.color} onChange={e => updateChart(sIdx, cIdx, {color: e.target.value})} className="w-5 h-5 rounded-full cursor-pointer bg-transparent" />
+                             <input value={chart.title} onChange={e => updateChart(sIdx, cIdx, {title: e.target.value})} className="bg-transparent text-[10px] font-black text-slate-200 w-full outline-none" />
+                           </div>
 
-                          <div className="space-y-1.5">
-                            <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Tipo de Herramienta</label>
-                            <select value={chart.type} onChange={e => updateChart(sIdx, cIdx, {type: e.target.value})} className={selectStyle}>
-                              <option value="bar">📊 Barras Simple</option>
-                              <option value="pie">⭕ Circular (Pay)</option>
-                              <option value="line">📈 Líneas</option>
-                              <option value="territorial">🗺️ Distribución Territorial</option>
-                              <option value="technicalFile">📄 Ficha Técnica</option>
-                              <option value="investment">💰 Desglose Inversión</option>
-                              <option value="programFile">📋 Ficha del Programa</option>
-                              <option value="timeline">📅 Línea de Tiempo</option>
-                              <option value="webview">🌐 Web Institucional</option>
-                              <option value="tour360">🏙️ Recorrido 360</option>
-                            </select>
-                          </div>
+                           <div className="grid grid-cols-2 gap-2">
+                             <div className="space-y-1">
+                               <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Eje X</label>
+                               <select value={chart.dimension} onChange={e => updateChart(sIdx, cIdx, {dimension: e.target.value})} className={selectStyle}>
+                                 {Object.keys(store[chart.tableName]?.columns || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                               </select>
+                             </div>
+                             <div className="space-y-1">
+                               <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Eje Y</label>
+                               <select value={chart.metric} onChange={e => updateChart(sIdx, cIdx, {metric: e.target.value})} className={selectStyle}>
+                                 {Object.keys(store[chart.tableName]?.columns || {}).map(c => <option key={c} value={c}>{c}</option>)}
+                               </select>
+                             </div>
+                           </div>
 
-                          {(chart.type === 'webview' || chart.type === 'tour360') && (
-                            <div className="space-y-2 pt-2 border-t border-white/5">
-                                <label className="text-[8px] font-black text-dorado uppercase ml-1">URL Enlace</label>
+                           <div className="space-y-1">
+                             <label className="text-[8px] font-black text-slate-500 uppercase ml-1">Herramienta</label>
+                             <select value={chart.type} onChange={e => updateChart(sIdx, cIdx, {type: e.target.value})} className={selectStyle}>
+                               <option value="bar">📊 Barras</option>
+                               <option value="pie">⭕ Circular</option>
+                               <option value="line">📈 Curva de Avance</option>
+                               <option value="timeline">📅 Línea de Tiempo</option>
+                               <option value="technicalFile">📋 Ficha Técnica</option>
+                               <option value="programFile">📝 Ficha del Programa</option>
+                               <option value="webview">🌐 Web</option>
+                               <option value="tour360">🏙️ Tour 360</option>
+                             </select>
+                           </div>
+
+                           {(chart.type === 'webview' || chart.type === 'tour360') && (
+                             <div className="space-y-1 pt-2 border-t border-white/5">
+                                <label className="text-[8px] font-black text-slate-500 uppercase ml-1">URL del Sistema</label>
                                 <input value={chart.url || ''} onChange={e => updateChart(sIdx, cIdx, {url: e.target.value})} placeholder="https://..." className={inputBase} />
-                            </div>
-                          )}
-
-                          {chart.type === 'timeline' && (
-                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/5">
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-black text-dorado uppercase ml-1">Inicio</label>
-                                  <select value={chart.startDateCol} onChange={e => updateChart(sIdx, cIdx, {startDateCol: e.target.value})} className={selectStyle}>
-                                    {Object.keys(store[chart.tableName]?.columns || {}).filter(c => store[chart.tableName].columns[c].type === 'date').map(c => <option key={c} value={c}>{c}</option>)}
-                                  </select>
-                                </div>
-                                <div className="space-y-1">
-                                  <label className="text-[8px] font-black text-dorado uppercase ml-1">Fin</label>
-                                  <select value={chart.endDateCol} onChange={e => updateChart(sIdx, cIdx, {endDateCol: e.target.value})} className={selectStyle}>
-                                    {Object.keys(store[chart.tableName]?.columns || {}).filter(c => store[chart.tableName].columns[c].type === 'date').map(c => <option key={c} value={c}>{c}</option>)}
-                                  </select>
-                                </div>
-                            </div>
-                          )}
-
-                          {(chart.type === 'technicalFile' || chart.type === 'multiBar') && (
-                            <div className="space-y-2 pt-2 border-t border-white/5">
-                              <p className="text-[8px] font-black text-slate-500 uppercase ml-1">Series Adicionales</p>
-                              <div className="bg-[#0F172A] p-3 rounded-xl max-h-40 overflow-y-auto space-y-1.5 border border-white/10">
-                                {Object.keys(store[chart.tableName]?.columns || {}).filter(k => store[chart.tableName].columns[k].isMetric).map(col => (
-                                  <label key={col} className="flex items-center gap-3 cursor-pointer hover:bg-white/5 p-1.5 rounded-lg transition-colors group/row">
-                                    <input type="checkbox" className="w-4 h-4 rounded accent-dorado" checked={chart.metrics?.includes(col)} onChange={(e) => {
-                                      const curr = chart.metrics || [];
-                                      const next = e.target.checked ? [...curr, col] : curr.filter(c => c !== col);
-                                      updateChart(sIdx, cIdx, { metrics: next });
-                                    }} />
-                                    <span className="text-[9px] font-bold text-slate-400 group-hover/row:text-white">{store[chart.tableName].columns[col].alias || col}</span>
-                                  </label>
-                                ))}
-                              </div>
-                            </div>
-                          )}
+                             </div>
+                           )}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    ))}
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => addChart(sIdx, 'bar')} className="py-2.5 bg-white/5 text-[9px] font-black uppercase rounded-xl hover:bg-white/10 transition-all border border-white/10">+ Gráfico</button>
-                      <button onClick={() => addChart(sIdx, 'territorial')} className="py-2.5 bg-dorado/10 text-[9px] font-black uppercase rounded-xl text-dorado hover:bg-dorado/20 border border-dorado/20 transition-all">+ Herramienta</button>
+                      <button onClick={() => addChart(sIdx, 'bar')} className="py-2.5 bg-white/5 text-[9px] font-black uppercase rounded-xl border border-white/10">+ Gráfico</button>
+                      <button onClick={() => addChart(sIdx, 'technicalFile')} className="py-2.5 bg-dorado/10 text-[9px] font-black uppercase rounded-xl text-dorado border border-dorado/20">+ Ficha</button>
                     </div>
                   </div>
                 ))}
@@ -312,7 +218,11 @@ const App: React.FC = () => {
         <div className="p-8 bg-[#0D0F13] border-t border-white/5 space-y-3">
           {editableConfig && (
             <>
-              <button onClick={handleExport} className="w-full py-4 bg-emerald-600 text-white font-[900] uppercase text-[11px] rounded-full hover:bg-emerald-500 shadow-lg shadow-emerald-900/20 transition-all">Exportar Reporte Final</button>
+              <button onClick={() => {
+                 const html = generateExportableHtml(store, editableConfig, { category: '', metric1: '', metric2: '' });
+                 const blob = new Blob([html], { type: 'text/html' });
+                 const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `reporte-sobse.html`; a.click();
+              }} className="w-full py-4 bg-emerald-600 text-white font-[900] uppercase text-[11px] rounded-full shadow-lg">Exportar Reporte Final</button>
               <div className="flex bg-white/5 p-1 rounded-full border border-white/5">
                 <button onClick={() => setView('dashboard')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-full ${view === 'dashboard' ? 'bg-white text-black shadow-md' : 'text-slate-500'}`}>Preview</button>
                 <button onClick={() => setView('table')} className={`flex-1 py-2 text-[9px] font-black uppercase rounded-full ${view === 'table' ? 'bg-white text-black shadow-md' : 'text-slate-500'}`}>Datos</button>
@@ -322,7 +232,7 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC] scrollbar-hide">
+      <main className="flex-1 overflow-y-auto p-12 bg-[#F8FAFC]">
         {loading && <div className="fixed inset-0 bg-white/80 z-[100] flex flex-col items-center justify-center animate-in fade-in"><div className="w-12 h-12 border-4 border-t-guinda rounded-full animate-spin" /></div>}
         {Object.keys(store).length > 0 ? (
           view === 'dashboard' && editableConfig ? (
@@ -330,33 +240,26 @@ const App: React.FC = () => {
               <DashboardPreview store={store} config={editableConfig} mapping={{}} onUpdateConfig={setEditableConfig} />
             </div>
           ) : (
-            <div className="h-full bg-white rounded-[4rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200 animate-in slide-in-from-bottom-10">
+            <div className="h-full bg-white rounded-[4rem] shadow-2xl overflow-hidden flex flex-col border border-slate-200">
                <div className="px-12 py-10 border-b border-slate-100 bg-slate-50/50 flex flex-col gap-2">
                   <h3 className="text-3xl font-[900] text-slate-900 uppercase italic tracking-tighter">{selectedTable}</h3>
-                  <p className="text-[10px] font-bold text-slate-400 italic uppercase tracking-widest opacity-60">Doble clic para editar ALIAS de las columnas</p>
+                  <p className="text-[10px] font-bold text-slate-400 italic uppercase tracking-widest opacity-60">Visualización de datos fuente</p>
                </div>
                <div className="flex-1 overflow-auto">
                  <table className="w-full text-left text-[11px]">
                    <thead className="sticky top-0 bg-white border-b border-slate-100 z-10">
                      <tr>
                        {Object.keys(store[selectedTable]?.columns || {}).map(k => (
-                         <th key={k} onDoubleClick={() => setEditingCol({ table: selectedTable, col: k })} className="px-10 py-7 font-black text-slate-400 uppercase group cursor-pointer hover:bg-slate-50 transition-colors">
-                           {editingCol?.col === k ? (
-                             <input autoFocus value={store[selectedTable].columns[k].alias || k} onChange={(e) => updateColumnAlias(selectedTable, k, e.target.value)} onBlur={() => setEditingCol(null)} className="border-2 border-guinda rounded-xl px-4 py-2 outline-none text-slate-900 w-full" />
-                           ) : (
-                             <div className="flex items-center justify-between">
-                               <span className={store[selectedTable].columns[k].alias !== k ? 'text-guinda font-black' : ''}>{store[selectedTable].columns[k].alias || k}</span>
-                               <span className="opacity-0 group-hover:opacity-100 text-guinda text-[12px]">✎</span>
-                             </div>
-                           )}
-                         </th>
+                         <th key={k} className="px-10 py-7 font-black text-slate-400 uppercase">{store[selectedTable].columns[k].alias || k}</th>
                        ))}
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
                      {store[selectedTable]?.rows.slice(0, 100).map((r, i) => (
                        <tr key={i} className="hover:bg-slate-50 transition-colors">
-                         {Object.keys(store[selectedTable].columns).map(k => <td key={k} className="px-10 py-5 text-slate-600 font-semibold border-r border-slate-50 last:border-r-0">{String(r[k] || '—')}</td>)}
+                         {Object.keys(store[selectedTable].columns).map(k => (
+                           <td key={k} className="px-10 py-5 text-slate-600 font-semibold">{String(r[k] || '')}</td>
+                         ))}
                        </tr>
                      ))}
                    </tbody>
@@ -365,19 +268,19 @@ const App: React.FC = () => {
             </div>
           )
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-12 animate-in slide-in-from-bottom-5">
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-12">
              <div className="space-y-10">
                 <div className="flex justify-center items-center gap-12 opacity-40">
                    <img src={LOGOS.CDMX} alt="CDMX" className="h-24 w-auto grayscale" />
                    <div className="w-[1px] h-16 bg-slate-300"></div>
-                   <img src="/assets/img/corazon-snfondo.png" alt="Corazón" className="h-28 w-auto grayscale" />
+                   <img src={LOGOS.CORAZON} alt="SOBSE" className="h-28 w-auto grayscale" />
                 </div>
                 <h1 className="text-9xl font-[950] text-[#0F172A] italic uppercase leading-[0.85] tracking-tighter">
                    CEREBRO <span className="text-guinda">SOBSE</span>
                 </h1>
-                <p className="text-2xl text-slate-400 italic font-medium max-w-xl mx-auto">Centraliza, analiza y visualiza datos técnicos de obra.</p>
+                <p className="text-2xl text-slate-400 italic font-medium max-w-xl mx-auto">Análisis y visualización inteligente de datos de obra.</p>
              </div>
-             <label className="px-16 py-8 bg-[#691C32] text-white rounded-full font-black uppercase text-xl shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer">
+             <label className="px-16 py-8 bg-[#691C32] text-white rounded-full font-black uppercase text-xl shadow-2xl hover:scale-105 transition-all cursor-pointer">
                 CARGAR ARCHIVOS
                 <input type="file" className="hidden" multiple onChange={e => e.target.files && processFiles(e.target.files)} />
              </label>
