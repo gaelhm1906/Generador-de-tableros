@@ -31,7 +31,7 @@ export interface ColumnMapping {
 
 export interface ChartConfig {
   id: string;
-  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar' | 'territorial' | 'technicalFile' | 'investment' | 'programFile';
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar' | 'territorial' | 'technicalFile' | 'investment' | 'programFile' | 'table';
   tableName: string;
   title: string;
   description?: string;

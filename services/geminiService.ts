@@ -1,37 +1,44 @@
 
 import { GoogleGenAI, Type } from "@google/genai";
-import { DataRow, AnalysisResult } from "../types";
+import { DataRow, AnalysisResult, DashboardConfig } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult> {
+export async function analyzeDataWithAI(data: DataRow[], history: DashboardConfig[] = []): Promise<AnalysisResult> {
   const sample = data.slice(0, 15);
   const keys = Object.keys(data[0] || {});
 
-  const prompt = `Actúa como un Arquitecto de Soluciones de Inteligencia de Negocios.
-  He recibido un dataset de la Secretaría de Obras con estas columnas: ${keys.join(", ")}
-  Muestra representativa: ${JSON.stringify(sample)}
-  
-  TU OBJETIVO:
-  1. Identificar la temática principal (Infraestructura, Finanzas, Recursos Humanos, etc.).
-  2. Identificar columnas que sirven como 'Dimensiones' (Alcaldías, Tipos, Estatus, Nombres) y 'Métricas' (Montos, Cantidades, Porcentajes).
-  3. Proponer un Dashboard Ejecutivo que cuente una historia coherente.
-  
-  INSTRUCCIONES DE ESTRUCTURA:
-  - 'suggestedMapping': Selecciona la mejor columna para agrupar (category) y las dos métricas numéricas más importantes.
-  - 'suggestedConfig': Define el título, subtítulo y al menos 3 secciones.
-  - Cada sección debe tener 2 gráficos con el tipo (bar, pie, area, radar) que mejor represente ese dato.
-  - Elige colores institucionales (usa códigos hexadecimales similares a Guinda #691C32, Verde #006341, Dorado #C5A572).
-  - Sugiere 4 KPIs de alto nivel.
-  
-  IMPORTANTE: Solo responde con el objeto JSON solicitado. No incluyas explicaciones adicionales.`;
+  const historyContext = history.length > 0 
+    ? `HISTORIAL DE APRENDIZAJE:\n${JSON.stringify(history.map(h => ({ title: h.title, sections: h.sections.length })))}`
+    : "No hay ejemplos previos.";
 
-  // Updated responseSchema to match DashboardConfig mandatory properties and include statusColor
+  const prompt = `Actúa como un Arquitecto de Datos Senior de SOBSE.
+  
+  CONTEXTO DE APRENDIZAJE:
+  ${historyContext}
+  
+  DATASET ACTUAL:
+  Columnas exactas: ${keys.join(", ")}
+  Muestra de datos: ${JSON.stringify(sample)}
+  
+  REGLAS DE VISUALIZACIÓN INTELIGENTE:
+  1. Si una columna contiene textos largos, problemáticas, observaciones o descripciones (ej. "Problemática", "Comentario"), NO uses 'bar'. Usa 'table' o 'technicalFile'.
+  2. Si una columna indica fechas o cronogramas (ej. "Calendario", "Semana", "Inicio"), usa 'table'.
+  3. Usa 'bar' o 'pie' solo para métricas numéricas comparativas claras (ej. Avance, Monto).
+  4. Si hay URLs, usa 'webview' o 'tour360'.
+  
+  INSTRUCCIONES TÉCNICAS:
+  - Genera un DashboardConfig completo en JSON.
+  - Colores: Guinda #691C32, Verde #006341, Dorado #C5A572.
+  - Sé extremadamente preciso con los nombres de las columnas.
+  
+  RESPONDE ÚNICAMENTE CON EL JSON.`;
+
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: [{ parts: [{ text: prompt }] }],
     config: {
-      systemInstruction: "Eres un sistema experto en análisis de datos para el Gobierno de la CDMX. Tu salida siempre es JSON puro.",
+      systemInstruction: "Eres el Cerebro de Datos de SOBSE. Tu prioridad es la legibilidad. Si los datos son descriptivos, prefieres tablas o fichas antes que gráficas.",
       responseMimeType: "application/json",
       thinkingConfig: { thinkingBudget: 4000 },
       responseSchema: {
@@ -81,7 +88,8 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
                           description: { type: Type.STRING },
                           dimension: { type: Type.STRING },
                           metric: { type: Type.STRING },
-                          color: { type: Type.STRING }
+                          color: { type: Type.STRING },
+                          url: { type: Type.STRING }
                         },
                         required: ["type", "title", "dimension", "metric", "color", "tableName"]
                       }
@@ -100,7 +108,8 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
                     key: { type: Type.STRING },
                     format: { type: Type.STRING },
                     statusLabel: { type: Type.STRING },
-                    statusColor: { type: Type.STRING }
+                    statusColor: { type: Type.STRING },
+                    width: { type: Type.STRING }
                   },
                   required: ["label", "key", "format", "tableName"]
                 }
@@ -118,6 +127,6 @@ export async function analyzeDataWithAI(data: DataRow[]): Promise<AnalysisResult
     }
   });
 
-  if (!response.text) throw new Error("Fallo en el análisis inteligente.");
+  if (!response.text) throw new Error("Fallo en el análisis del Cerebro.");
   return JSON.parse(response.text.trim());
 }
