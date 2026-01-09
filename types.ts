@@ -31,13 +31,14 @@ export interface ColumnMapping {
 
 export interface ChartConfig {
   id: string;
-  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar' | 'territorial' | 'technicalFile' | 'investment' | 'programFile' | 'table';
+  type: 'bar' | 'area' | 'line' | 'pie' | 'radar' | 'scatter' | 'webview' | 'timeline' | 'combo' | 'tour360' | 'multiBar' | 'territorial' | 'technicalFile' | 'investment' | 'programFile' | 'table';
   tableName: string;
   title: string;
   description?: string;
   dimension: string;
   metric: string; 
-  metrics?: string[]; 
+  metric2?: string; // Para Scatter (Eje Y)
+  metrics?: string[]; // Para Radar (Dimensiones)
   tooltipMetrics?: string[]; 
   color: string;
   color2?: string;

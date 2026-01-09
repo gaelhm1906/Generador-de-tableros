@@ -4,53 +4,52 @@ import { DataRow, AnalysisResult, DashboardConfig } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export async function analyzeDataWithAI(data: DataRow[], history: DashboardConfig[] = []): Promise<AnalysisResult> {
-  const sample = data.slice(0, 15);
+export async function analyzeDataWithAI(data: DataRow[], tableName: string, history: DashboardConfig[] = []): Promise<AnalysisResult> {
+  const sample = data.slice(0, 30);
   const keys = Object.keys(data[0] || {});
 
-  const historyContext = history.length > 0 
-    ? `HISTORIAL DE APRENDIZAJE:\n${JSON.stringify(history.map(h => ({ title: h.title, sections: h.sections.length })))}`
-    : "No hay ejemplos previos.";
-
-  const prompt = `Actúa como un Arquitecto de Datos Senior de SOBSE.
+  const prompt = `Actúa como el Consultor Senior de Analítica para la SOBSE.
   
-  CONTEXTO DE APRENDIZAJE:
-  ${historyContext}
+  DATASET: "${tableName}"
+  COLUMNAS: ${keys.join(", ")}
+  MUESTRA: ${JSON.stringify(sample)}
   
-  DATASET ACTUAL:
-  Columnas exactas: ${keys.join(", ")}
-  Muestra de datos: ${JSON.stringify(sample)}
+  OBJETIVO:
+  Crea un tablero de control TÉCNICO-INSTITUCIONAL exhaustivo. Debe ser complejo pero digerible.
   
-  REGLAS DE VISUALIZACIÓN INTELIGENTE:
-  1. Si una columna contiene textos largos, problemáticas, observaciones o descripciones (ej. "Problemática", "Comentario"), NO uses 'bar'. Usa 'table' o 'technicalFile'.
-  2. Si una columna indica fechas o cronogramas (ej. "Calendario", "Semana", "Inicio"), usa 'table'.
-  3. Usa 'bar' o 'pie' solo para métricas numéricas comparativas claras (ej. Avance, Monto).
-  4. Si hay URLs, usa 'webview' o 'tour360'.
+  HERRAMIENTAS OBLIGATORIAS SI LOS DATOS LO PERMITEN:
+  1. SCATTER (Dispersión): Relaciona 'Inversión' o 'Monto' vs 'Avance' o 'Población'. Es vital para ver eficiencia.
+  2. RADAR: Si hay múltiples métricas (D1, D2, D3 o Beneficio, Equidad, Eficiencia), úsala para comparar el desempeño multidimensional de un registro.
+  3. TIMELINE: Imprescindible si hay fechas para ver la línea de avance físico-financiero.
+  4. TECHNICALFILE: Para la ficha técnica detallada del registro principal.
+  5. KPI CARDS: Al menos 4 indicadores masivos (Inversión Total, Población Beneficiada, Avance Promedio, etc.).
   
-  INSTRUCCIONES TÉCNICAS:
-  - Genera un DashboardConfig completo en JSON.
-  - Colores: Guinda #691C32, Verde #006341, Dorado #C5A572.
-  - Sé extremadamente preciso con los nombres de las columnas.
+  NARRATIVA DEL TABLERO:
+  - SECCIÓN 1: "INDICADORES DE ALTO NIVEL" (KPIs).
+  - SECCIÓN 2: "ANÁLISIS DE EFICIENCIA Y DISPERSIÓN" (Scatter plot de Inversión vs Avance).
+  - SECCIÓN 3: "ESTRUCTURA Y DESEMPEÑO" (Radar de dimensiones y Bar charts de categorías).
+  - SECCIÓN 4: "SEGUIMIENTO OPERATIVO" (Tabla de datos y Ficha técnica detallada).
   
-  RESPONDE ÚNICAMENTE CON EL JSON.`;
+  ESTÉTICA:
+  - Fondos oscuros elegantes (#0D1014).
+  - Acentos en Guinda (#691C32), Verde (#006341) y Dorado (#C5A572).
+  - Títulos descriptivos y profesionales.
+  
+  RESPONDE ÚNICAMENTE CON EL JSON SIGUIENDO EL SCHEMA.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: [{ parts: [{ text: prompt }] }],
     config: {
-      systemInstruction: "Eres el Cerebro de Datos de SOBSE. Tu prioridad es la legibilidad. Si los datos son descriptivos, prefieres tablas o fichas antes que gráficas.",
+      systemInstruction: "Eres el motor de inteligencia de SOBSE. Tu trabajo es maximizar la profundidad técnica de los tableros. Prefieres gráficos complejos como Scatter y Radar sobre barras simples cuando el dataset tiene múltiples variables numéricas.",
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 4000 },
+      thinkingConfig: { thinkingBudget: 12000 },
       responseSchema: {
         type: Type.OBJECT,
         properties: {
           suggestedMapping: {
             type: Type.OBJECT,
-            properties: {
-              category: { type: Type.STRING },
-              metric1: { type: Type.STRING },
-              metric2: { type: Type.STRING }
-            },
+            properties: { category: { type: Type.STRING }, metric1: { type: Type.STRING }, metric2: { type: Type.STRING } },
             required: ["category", "metric1", "metric2"]
           },
           suggestedConfig: {
@@ -59,16 +58,9 @@ export async function analyzeDataWithAI(data: DataRow[], history: DashboardConfi
               family: { type: Type.STRING },
               title: { type: Type.STRING },
               subtitle: { type: Type.STRING },
+              topPillText: { type: Type.STRING },
               headerBgColor: { type: Type.STRING },
-              colors: {
-                type: Type.OBJECT,
-                properties: {
-                  primary: { type: Type.STRING },
-                  secondary: { type: Type.STRING },
-                  accent: { type: Type.STRING }
-                },
-                required: ["primary", "secondary", "accent"]
-              },
+              colors: { type: Type.OBJECT, properties: { primary: { type: Type.STRING }, secondary: { type: Type.STRING }, accent: { type: Type.STRING } } },
               sections: {
                 type: Type.ARRAY,
                 items: {
@@ -88,45 +80,32 @@ export async function analyzeDataWithAI(data: DataRow[], history: DashboardConfi
                           description: { type: Type.STRING },
                           dimension: { type: Type.STRING },
                           metric: { type: Type.STRING },
+                          metric2: { type: Type.STRING },
+                          metrics: { type: Type.ARRAY, items: { type: Type.STRING } },
                           color: { type: Type.STRING },
                           url: { type: Type.STRING }
                         },
                         required: ["type", "title", "dimension", "metric", "color", "tableName"]
                       }
                     }
-                  },
-                  required: ["title", "description", "charts"]
+                  }
                 }
               },
               kpis: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
-                  properties: {
-                    label: { type: Type.STRING },
-                    tableName: { type: Type.STRING },
-                    key: { type: Type.STRING },
-                    format: { type: Type.STRING },
-                    statusLabel: { type: Type.STRING },
-                    statusColor: { type: Type.STRING },
-                    width: { type: Type.STRING }
-                  },
-                  required: ["label", "key", "format", "tableName"]
+                  properties: { label: { type: Type.STRING }, tableName: { type: Type.STRING }, key: { type: Type.STRING }, format: { type: Type.STRING }, statusColor: { type: Type.STRING }, width: { type: Type.STRING } }
                 }
               }
-            },
-            required: ["title", "subtitle", "sections", "kpis", "family", "headerBgColor", "colors"]
+            }
           },
-          aiInsights: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          }
-        },
-        required: ["suggestedMapping", "suggestedConfig", "aiInsights"]
+          aiInsights: { type: Type.ARRAY, items: { type: Type.STRING } }
+        }
       }
     }
   });
 
-  if (!response.text) throw new Error("Fallo en el análisis del Cerebro.");
+  if (!response.text) throw new Error("La IA no devolvió una respuesta válida.");
   return JSON.parse(response.text.trim());
 }
